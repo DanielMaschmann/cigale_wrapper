@@ -3,6 +3,8 @@ Here we gather all the helper functions we need for the Cigale wrapper
 """
 import numpy as np
 import astropy.units as u
+from werkzeugkiste import helper_func
+from obszugang import ObsTools
 
 
 class CigaleHelper:
@@ -24,14 +26,14 @@ class CigaleHelper:
         """
         filter_name = 'hst.'
         if instrument == 'uvis':
-            filter_name += 'wfc3.'
+            filter_name += 'wfc3.uvis1.'
         elif instrument == 'acs':
-            filter_name += 'wfc.'
+            filter_name += 'acs.wfc.'
         else:
             raise KeyError('instrument musst be uvis or acs')
         filter_name += band
         if err:
-            filter_name += 'err'
+            filter_name += '_err'
         return filter_name
 
     @staticmethod
@@ -52,8 +54,42 @@ class CigaleHelper:
         filter_name += instrument + '.'
         filter_name += band
         if err:
-            filter_name += 'err'
+            filter_name += '_err'
         return filter_name
+
+    @staticmethod
+    def get_obs_fitler_name(band, obs, instrument, err=False):
+        """
+        Getting the correct Obs filter name
+        Parameters
+        ----------
+        band : str
+        obs : str
+        instrument : str
+        err: bool
+        Returns
+        -------
+        filter_name : str
+        """
+        if obs == 'hst':
+            return CigaleHelper.get_hst_filter_name(band=band, instrument=instrument, err=err)
+        if obs == 'jwst':
+            return CigaleHelper.get_jwst_filter_name(band=band, instrument=instrument, err=err)
+
+    @staticmethod
+    def get_filter_name_list(band_list, obs_list, instrument_list, include_err=False):
+
+        filter_name_list = []
+        for band, obs, instrument in zip(band_list, obs_list, instrument_list):
+            if obs == 'hst':
+                filter_name_list.append(CigaleHelper.get_hst_filter_name(band=band, instrument=instrument, err=False))
+                if include_err:
+                    filter_name_list.append(CigaleHelper.get_hst_filter_name(band=band, instrument=instrument, err=True))
+            if obs == 'jwst':
+                filter_name_list.append(CigaleHelper.get_jwst_filter_name(band=band, instrument=instrument, err=False))
+                if include_err:
+                    filter_name_list.append(CigaleHelper.get_jwst_filter_name(band=band, instrument=instrument, err=True))
+        return filter_name_list
 
     @staticmethod
     def replace_params_in_file(param_dict, file_name='pcigale.ini'):
@@ -64,9 +100,13 @@ class CigaleHelper:
         param_dict : dict
         file_name : str
         """
+
         with open(file_name, 'r', encoding='utf-8') as file:
             lines = file.readlines()
-        print(param_dict.keys())
+
+        # # print(lines)
+        # # print(param_dict.keys())
+        # exit()
         for key in param_dict.keys():
             print('key ', key)
             line_index = [i for i in range(len(lines)) if lines[i].startswith(key)]
@@ -90,14 +130,47 @@ class CigaleHelper:
             # check if there is no , at the end
             if new_line[-2:] == ', ':
                 new_line = new_line[:-2]
-
+            new_line += '\n'
             print('new_line ', new_line)
             lines[line_index[0]] = new_line
         with open(file_name, 'w', encoding='utf-8') as file:
             file.writelines(lines)
 
     @staticmethod
-    def create_output_band_list_str(output_band_dict):
+    def replace_redshift_digits_name_in_file(n_decimals_redshift, file_name='pcigale.ini'):
+        """
+        function to replace specific model configurations in pcigale ini files
+        Parameters
+        ----------
+        n_decimals_redshift : int
+        file_name : str
+        """
+        with open(file_name, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
+        key = 'redshift'
+        line_index = [i for i in range(len(lines)) if lines[i].startswith(key)]
+        prefix = ''
+        if not line_index:
+            line_index = [i for i in range(len(lines)) if lines[i].startswith('  ' + key)]
+            prefix = '  '
+        if not line_index:
+            line_index = [i for i in range(len(lines)) if lines[i].startswith('    ' + key)]
+            prefix = '    '
+        if len(line_index) > 1:
+            raise KeyError('There is apparently more than one line beginning with <<', key, '>>')
+        new_line = prefix + 'redshift_decimals' + ' = ' + str(n_decimals_redshift) + '\n'
+
+        # check if there is no , at the end
+        if new_line[-2:] == ', ':
+            new_line = new_line[:-2]
+        new_line += '\n'
+        lines[line_index[0]] = new_line
+
+        with open(file_name, 'w', encoding='utf-8') as file:
+            file.writelines(lines)
+
+    @staticmethod
+    def create_output_band_list_str(output_band_dict, include_err=False):
         """
         Function to create a cigale string list for filter names
         Parameters
@@ -107,15 +180,33 @@ class CigaleHelper:
         output_band_list_str = []
         if output_band_dict is not None:
             if 'hst' in output_band_dict.keys():
-                for band in output_band_dict['hst']['acs']:
-                    output_band_list_str.append(CigaleHelper.get_hst_filter_name(band=band, instrument='acs'))
-                for band in output_band_dict['hst']['uvis']:
-                    output_band_list_str.append(CigaleHelper.get_hst_filter_name(band=band, instrument='uvis'))
+                if 'acs' in output_band_dict['hst'].keys():
+                    for band in output_band_dict['hst']['acs']:
+                        output_band_list_str.append(CigaleHelper.get_hst_filter_name(band=band, instrument='acs'))
+                        if include_err:
+                            output_band_list_str.append(CigaleHelper.get_hst_filter_name(band=band, instrument='acs') + '_err')
+
+                if 'uvis' in output_band_dict['hst'].keys():
+                    for band in output_band_dict['hst']['uvis']:
+                        output_band_list_str.append(CigaleHelper.get_hst_filter_name(band=band, instrument='uvis'))
+                        if include_err:
+                            output_band_list_str.append(CigaleHelper.get_hst_filter_name(band=band, instrument='uvis') + '_err')
+                if 'ir' in output_band_dict['hst'].keys():
+                    for band in output_band_dict['hst']['ir']:
+                        output_band_list_str.append(CigaleHelper.get_hst_filter_name(band=band, instrument='ir'))
+                        if include_err:
+                            output_band_list_str.append(CigaleHelper.get_hst_filter_name(band=band, instrument='ir') + '_err')
             if 'jwst' in output_band_dict.keys():
-                for band in output_band_dict['jwst']['nircam']:
-                    output_band_list_str.append(CigaleHelper.get_jwst_filter_name(band=band,  instrument='nircam'))
-                for band in output_band_dict['jwst']['miri']:
-                    output_band_list_str.append(CigaleHelper.get_jwst_filter_name(band=band,  instrument='miri'))
+                if 'nircam' in output_band_dict['jwst'].keys():
+                    for band in output_band_dict['jwst']['nircam']:
+                        output_band_list_str.append(CigaleHelper.get_jwst_filter_name(band=band,  instrument='nircam'))
+                        if include_err:
+                            output_band_list_str.append(CigaleHelper.get_jwst_filter_name(band=band, instrument='nircam') + '_err')
+                if 'miri' in output_band_dict['jwst'].keys():
+                    for band in output_band_dict['jwst']['miri']:
+                        output_band_list_str.append(CigaleHelper.get_jwst_filter_name(band=band,  instrument='miri'))
+                        if include_err:
+                            output_band_list_str.append(CigaleHelper.get_jwst_filter_name(band=band, instrument='miri') + '_err')
         return output_band_list_str
 
     @staticmethod
@@ -134,17 +225,5 @@ class CigaleHelper:
 
         """
         return list(np.array(np.unique(np.rint(np.logspace(np.log10(start), np.log10(stop), n_steps))), dtype=int))
-
-    @staticmethod
-    def compute_sim_band_flux_rescaled(model_table, mstar_scale, dist_scale, band='hst.wfc3.F555W'):
-
-        sim_flux = np.array(model_table[band])
-        sim_dist = np.array(model_table['universe.luminosity_distance']) * u.m
-        sim_mstar = np.array(model_table['stellar.m_star']) * u.M_sun
-
-        mass_scale_factor = (mstar_scale * u.M_sun) / sim_mstar
-        dist_scale_factor = sim_dist ** 2 / (((dist_scale * u.Mpc).to(u.m))**2)
-
-        return sim_flux * mass_scale_factor * dist_scale_factor
 
 

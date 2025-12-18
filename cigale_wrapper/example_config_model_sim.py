@@ -108,6 +108,7 @@ standard_sed_modules_params = {
         }
 }
 
+
 standard_output_sed_param_list = [
 
     #'dust.luminosity',
@@ -163,7 +164,7 @@ standard_output_sed_param_list = [
 
 ]
 
-data_output_path = '/media/benutzer/Extreme Pro/data/cigale_model_sim_output'
+data_output_path = '/media/benutzer/derka_derka/data/cigale_model_sim_output'
 
 standard_output_band_dict = {'hst': {'acs': ['F435W', 'F555W', 'F814W'],
                                      'uvis': ['F275W', 'F336W', 'F438W', 'F555W', 'F814W']},
