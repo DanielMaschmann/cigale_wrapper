@@ -361,10 +361,13 @@ class CigaleModelWrapper:
             redshift_list = [0.0] * n_rows
         # if dist is just 1
         if (isinstance(dist, float) | isinstance(dist, int)) & (n_rows > 1):
+            print('1')
             dist_list = [dist] * n_rows
         elif isinstance(dist, list) | isinstance(dist, np.ndarray):
+            print('2')
             dist_list = dist
         else:
+            print('3')
             dist_list = [dist]
 
 
@@ -382,8 +385,10 @@ class CigaleModelWrapper:
         flux_file.writelines(" \n")
 
         flux_dict = {}
+        print(range(n_rows), name_list, redshift_list, dist_list)
         # fill flux file
         for row_idx, name, redshift, dist in zip(range(n_rows), name_list, redshift_list, dist_list):
+            print(row_idx, name, redshift, dist)
             flux_dict.update({name: {
                 'redshift': redshift,
                 'dist': dist,

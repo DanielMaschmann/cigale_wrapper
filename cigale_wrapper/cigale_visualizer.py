@@ -434,11 +434,11 @@ class CigaleVisualizer:
         obs_flux_list = []
         for band, obs, instrument in zip(flux_dict['band_list'], flux_dict['obs_list'], flux_dict['instrument_list']):
             # get band wavelength
-            mean_wave = ObsTools.get_obs_telescope_wave(band=band, obs=obs, target=None, instrument=instrument,
+            mean_wave = ObsTools.get_obs_wave(band=band, obs=obs, target=None, instrument=instrument,
                                                         wave_estimator='mean_wave', unit='mu')
-            min_wave = ObsTools.get_obs_telescope_wave(band=band, obs=obs, target=None, instrument=instrument,
+            min_wave = ObsTools.get_obs_wave(band=band, obs=obs, target=None, instrument=instrument,
                                                         wave_estimator='min_wave', unit='mu')
-            max_wave = ObsTools.get_obs_telescope_wave(band=band, obs=obs, target=None, instrument=instrument,
+            max_wave = ObsTools.get_obs_wave(band=band, obs=obs, target=None, instrument=instrument,
                                                         wave_estimator='max_wave', unit='mu')
             min_wave_list.append(min_wave)
             max_wave_list.append(max_wave)
